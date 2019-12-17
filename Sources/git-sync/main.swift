@@ -1,3 +1,10 @@
+//
+//  main.swift
+//  git-sync
+//
+//  Created by Daniel Marriner on 17/12/2019.
+//
+
 import Foundation
 import OctoKit
 
@@ -112,12 +119,12 @@ func getRepositories() -> [OctoKit.Repository] {
 
 func generateGitSync() {
     
-    /// Check if 'git-sync.json' exists in current directory
-    let filePath = FileManager.default.currentDirectoryPath + "/git-sync.json"
+    /// Check if '.git-sync' exists in current directory
+    let filePath = FileManager.default.currentDirectoryPath + "/.git-sync"
 //    print(filePath)  // DEBUG
     let fileReachable = FileManager.default.fileExists(atPath: filePath)
     
-    /// If 'git-sync.json' exists, ask to overwrite (destructive)
+    /// If '.git-sync' file exists, ask to overwrite (destructive)
     if fileReachable {
         print("WARNING: A git-sync configuration file already exists in this directory.")
         print("         Generating a new file is a destructive operation that will erase")
@@ -128,7 +135,7 @@ func generateGitSync() {
         }
     }
     
-    /// Get all user repositories and create basic 'git-sync.json'
+    /// Get all user repositories and create basic '.git-sync' file
     let repositories = getRepositories()
     let repos: [Repo] = repositories.map { Repo(name: $0.name!, link: $0.cloneURL!, hidden: false) }
     let rootDirectory = Root(subdirs: [], repositories: repos)
@@ -140,7 +147,7 @@ func generateGitSync() {
     do {
         try string.write(toFile: filePath, atomically: false, encoding: .utf8)
     } catch {
-        print("ERROR: Unable to create git-sync.json.")
+        print("ERROR: Unable to create git-sync configuration file.")
         logout()
     }
     
@@ -150,12 +157,12 @@ func generateGitSync() {
 
 func cloneFromGitSync() {
         
-    /// Check if 'git-sync.json' exists in current directory
-    let filePath = FileManager.default.currentDirectoryPath + "/git-sync.json"
+    /// Check if '.git-sync' exists in current directory
+    let filePath = FileManager.default.currentDirectoryPath + "/.git-sync"
 //    print(filePath)  // DEBUG
     let fileReachable = FileManager.default.fileExists(atPath: filePath)
     
-    /// If 'git-sync.json' doesn't exist, ask to try again later
+    /// If '.git-sync' doesn't exist, ask to try again later
     if !fileReachable {
         print("ERROR: No git-sync configuration file exists in this directory. Please")
         print("       make sure you are in the correct directory, or run git-sync init")
@@ -163,7 +170,7 @@ func cloneFromGitSync() {
         logout()
     }
     
-    /// Read 'git-sync.json' file
+    /// Read '.git-sync' file
     let file = FileHandle(forReadingAtPath: filePath)!
     let data = file.readDataToEndOfFile()
     file.closeFile()
