@@ -8,7 +8,7 @@
 import Foundation
 
 var currentDirectory: String = FileManager.default.currentDirectoryPath
-var directoryStack: [String] = [""]
+var directoryStack: [String] = ["/"]
 
 struct Root: Codable {
     let subdirs: [Directory]
@@ -40,7 +40,7 @@ struct Directory: Codable {
         } catch {
             print("ERROR: Unable to create directory \(self.name)")
         }
-        directoryStack.append(directoryStack.last! + "/\(self.name)")
+        directoryStack.append(directoryStack.last! + "\(self.name)")
         
         /// Create sub-directories
         self.subdirs.forEach { $0.create() }
