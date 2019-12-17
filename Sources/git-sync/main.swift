@@ -15,7 +15,7 @@ func main() {
         case "1": listRepos()
         case "2": listStarredRepos()
         case "3": generateGitSync()
-//        case "4": cloneFromGitSync()
+        case "4": cloneFromGitSync()
         case "0": logout()
         default :
             validOption = false
@@ -95,7 +95,6 @@ func getRepositories() -> [OctoKit.Repository] {
     client.repositories { response in
         switch response {
         case .success(let repos):
-//            print(repos.filter({ $0.owner.login == me!.login! }).map { $0.cloneURL! })
             repositories = repos
             reposListed = true
         case .failure(let error):
@@ -106,6 +105,8 @@ func getRepositories() -> [OctoKit.Repository] {
     repeat {
         RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
     } while reposListed == nil
+    
+    /// Return non-organisation repositories
     return repositories.filter({ $0.owner.login == me!.login! })
 }
 
@@ -130,7 +131,7 @@ func generateGitSync() {
     /// Get all user repositories and create basic 'git-sync.json'
     let repositories = getRepositories()
     let repos: [Repo] = repositories.map { Repo(name: $0.name!, link: $0.cloneURL!, hidden: false) }
-    let rootDirectory = Directory(name: "", subdirs: [], repositories: repos)
+    let rootDirectory = Root(subdirs: [], repositories: repos)
     let encoder = JSONEncoder()
     let data = try! encoder.encode(rootDirectory)
     let string = String(data: data, encoding: .utf8)!
@@ -144,6 +145,40 @@ func generateGitSync() {
     }
     
     print("SUCCESS: A default git-sync configuration file has been generated for you.")
+    logout()
+}
+
+func cloneFromGitSync() {
+        
+    /// Check if 'git-sync.json' exists in current directory
+    let filePath = FileManager.default.currentDirectoryPath + "/git-sync.json"
+//    print(filePath)  // DEBUG
+    let fileReachable = FileManager.default.fileExists(atPath: filePath)
+    
+    /// If 'git-sync.json' doesn't exist, ask to try again later
+    if !fileReachable {
+        print("ERROR: No git-sync configuration file exists in this directory. Please")
+        print("       make sure you are in the correct directory, or run git-sync init")
+        print("       to generate a default one.")
+        logout()
+    }
+    
+    /// Read 'git-sync.json' file
+    let file = FileHandle(forReadingAtPath: filePath)!
+    let data = file.readDataToEndOfFile()
+    file.closeFile()
+    
+    /// Decode file contents into data structure
+    let decoder = JSONDecoder()
+    var structure: Root = Root(subdirs: [], repositories: [])
+    do {
+        structure = try decoder.decode(Root.self, from: data)
+    } catch {
+        print("ERROR: Unable to interpret git-sync configuration file.")
+        logout()
+    }
+    print(structure)
+    
     logout()
 }
 

@@ -7,6 +7,11 @@
 
 import Foundation
 
+struct Root: Codable {
+    let subdirs: [Directory]
+    let repositories: [Repo]
+}
+
 struct Directory: Codable {
     let name: String
     let subdirs: [Directory]
