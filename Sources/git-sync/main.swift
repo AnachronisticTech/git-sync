@@ -13,7 +13,7 @@ func main() {
         validOption = true
         switch listOptions() {
         case "1": listRepos()
-//        case "2": listStarredRepos()
+        case "2": listStarredRepos()
 //        case "3": generateGitSync()
 //        case "4": cloneFromGitSync()
         case "0": logout()
@@ -61,6 +61,23 @@ func listRepos() {
         switch response {
         case .success(let repos):
             print(repos.filter({ $0.owner.login == me!.login! }).map { $0.cloneURL! })
+            reposListed = true
+        case .failure(let error):
+            print(error)
+            reposListed = false
+        }
+    }
+    repeat {
+        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
+    } while reposListed == nil
+}
+
+func listStarredRepos() {
+    var reposListed: Bool? = nil
+    client.myStars { response in
+        switch response {
+        case .success(let repos):
+            print(repos.map { $0.name! })
             reposListed = true
         case .failure(let error):
             print(error)
