@@ -184,7 +184,12 @@ func cloneFromGitSync() {
         print("ERROR: Unable to interpret git-sync configuration file.")
         logout()
     }
-    print(structure)
+    
+    /// Check if directory structure is different to '.git-sync'
+    //  TODO
+    
+    /// Create directory structure and clone non-hidden repositories
+    structure.create()
     
     logout()
 }
