@@ -34,13 +34,18 @@ struct Directory: Codable {
             print("Folder \(self.name) already exists")
         }
         
+        /// Ignore directory if it will be empty
+        if self.subdirs.count == 0 && self.repositories.filter({ !$0.hidden }).count == 0 {
+            return
+        }
+        
         /// Create and enter directory
         do {
             try FileManager.default.createDirectory(atPath: currentDirectory + directoryStack.last! + "/\(self.name)", withIntermediateDirectories: true, attributes: nil)
         } catch {
             print("ERROR: Unable to create directory \(self.name)")
         }
-        directoryStack.append(directoryStack.last! + "\(self.name)")
+        directoryStack.append(directoryStack.last! + "\(self.name)/")
         
         /// Create sub-directories
         self.subdirs.forEach { $0.create() }
@@ -62,7 +67,11 @@ struct Repo: Codable {
         /// If repository not marked as hidden, clone into current directory with name
         if !self.hidden {
             print("git cloning \(self.name) in directory \(directoryStack.last!)")
-            FileManager.default.createFile(atPath: currentDirectory + directoryStack.last! + "/\(self.name).txt", contents: nil, attributes: nil)
+            do {
+                try FileManager.default.createDirectory(atPath: currentDirectory + directoryStack.last! + "/\(self.name)", withIntermediateDirectories: true, attributes: nil)
+            } catch {
+                print("ERROR: Unable to create directory \(self.name)")
+            }
         }
     }
 }

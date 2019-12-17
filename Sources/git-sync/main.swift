@@ -177,12 +177,13 @@ func cloneFromGitSync() {
     
     /// Decode file contents into data structure
     let decoder = JSONDecoder()
-    var structure: Root = Root(subdirs: [], repositories: [])
+    let structure: Root
     do {
         structure = try decoder.decode(Root.self, from: data)
     } catch {
         print("ERROR: Unable to interpret git-sync configuration file.")
         logout()
+        return
     }
     
     /// Check if directory structure is different to '.git-sync'
