@@ -1,0 +1,43 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "Clibgit2",
+        "repositoryURL": "https://github.com/AnachronisticTech/Clibgit2.git",
+        "state": {
+          "branch": null,
+          "revision": "2972c72928895bd166e412a7d768cffacde287e8",
+          "version": "0.0.2"
+        }
+      },
+      {
+        "package": "OctoKit",
+        "repositoryURL": "https://github.com/nerdishbynature/octokit.swift.git",
+        "state": {
+          "branch": null,
+          "revision": "9ad4d6eff94ad1d9873d3b410a47c663c820d4bd",
+          "version": "0.10.0"
+        }
+      },
+      {
+        "package": "RequestKit",
+        "repositoryURL": "https://github.com/nerdishbynature/RequestKit.git",
+        "state": {
+          "branch": null,
+          "revision": "fd5e9e99aada7432170366c9e95967011ce13bad",
+          "version": "2.4.0"
+        }
+      },
+      {
+        "package": "SwiftGit2",
+        "repositoryURL": "https://github.com/AnachronisticTech/SwiftGit2.git",
+        "state": {
+          "branch": null,
+          "revision": "fbec6e9ba57a87815b984cad133f8354595c96e6",
+          "version": "0.7.0"
+        }
+      }
+    ]
+  },
+  "version": 1
+}
