@@ -186,9 +186,6 @@ func cloneFromGitSync() {
         return
     }
     
-    /// Check if directory structure is different to '.git-sync'
-    //  TODO
-    
     /// Create directory structure and clone non-hidden repositories
     structure.create()
     
