@@ -89,7 +89,7 @@ struct Directory: Codable {
         self.repositories.forEach { $0.create() }
         
         /// Exit directory
-        directoryStack.popLast()
+        let _ = directoryStack.popLast()
     }
 }
 
