@@ -11,16 +11,24 @@ let currentDirectory: String = FileManager.default.currentDirectoryPath + "/Git"
 var directoryStack: [String] = ["/"]
 let directoryBlacklist: [String] = [".DS_Store", ".git-sync"]
 
-struct Root: Codable {
+struct Root: Codable, Checkable {
     let subdirs: [Directory]
     let repositories: [Repo]
     
     func create() {
-        /// Reset directory stack and current path
+        /// Reset directory stack
         directoryStack = ["/"]
         
         /// Check if directory structure matches git-sync file
         if !checkDir() {
+            return
+        }
+        
+        /// Check for local directory naming conflicts
+        if containsNameConflict() {
+            print("ERROR: A directory contains folders or repositories with duplicate")
+            print("       names. Please correct your git-sync configuration file and")
+            print("       try again.")
             return
         }
         
@@ -32,7 +40,7 @@ struct Root: Codable {
     }
     
     func checkDir() -> Bool {
-        /// Reset directory stack and current path
+        /// Reset directory stack
         directoryStack = ["/"]
         
         /// Get contents of current directory
@@ -58,7 +66,7 @@ struct Root: Codable {
     }
 }
 
-struct Directory: Codable {
+struct Directory: Codable, Checkable {
     let name: String
     let subdirs: [Directory]
     let repositories: [Repo]
@@ -118,6 +126,33 @@ public extension Array where Element == String {
                 return true
             }
         }
+        return false
+    }
+    
+    func containsDuplicates() -> Bool {
+        return self.sorted() != Array(Set(self)).sorted()
+    }
+}
+
+protocol Checkable {
+    var subdirs: [Directory] { get }
+    var repositories: [Repo] { get }
+}
+
+extension Checkable {
+    func containsNameConflict() -> Bool {
+        /// Check for duplicate local directory names
+        if (subdirs.map({ $0.name }) + repositories.filter({ !$0.hidden }).map({ $0.name })).containsDuplicates() {
+            return true
+        }
+        
+        /// Recursively check sub-directories with early exit condition
+        for i in self.subdirs {
+            if i.containsNameConflict() {
+                return true
+            }
+        }
+        
         return false
     }
 }
