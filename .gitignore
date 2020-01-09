@@ -48,3 +48,6 @@ build/
 **/xcshareddata/WorkspaceSettings.xcsettings
 
 # End of https://www.gitignore.io/api/xcode,swiftpm,swiftpackagemanager
+
+.DS_Store
+contents.xcworkspacedata
