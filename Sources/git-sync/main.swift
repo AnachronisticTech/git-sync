@@ -22,7 +22,8 @@ func main() {
         case "1": listRepos()
         case "2": listStarredRepos()
         case "3": generateGitSync()
-        case "4": cloneFromGitSync()
+        case "4": updateGitSync()
+        case "5": cloneFromGitSync()
         case "0": logout()
         default :
             validOption = false
@@ -57,7 +58,8 @@ func listOptions() -> String {
     print("  1. List your repositories")
     print("  2. List your starred repositories")
     print("  3. Generate git-sync file")
-    print("  4. Clone from git-sync file")
+    print("  4. Update git-sync file")
+    print("  5. Clone from git-sync file")
     print("  0. Exit")
     return readLine()!
 }
@@ -152,6 +154,63 @@ func generateGitSync() {
     }
     
     print("SUCCESS: A default git-sync configuration file has been generated for you.")
+    logout()
+}
+
+func updateGitSync() {
+            
+    /// Check if '.git-sync' exists in current directory
+    let filePath = FileManager.default.currentDirectoryPath + "/.git-sync"
+    let fileReachable = FileManager.default.fileExists(atPath: filePath)
+    
+    /// If '.git-sync' doesn't exist, ask to try again later
+    if !fileReachable {
+        print("ERROR: No git-sync configuration file exists in this directory. Please")
+        print("       make sure you are in the correct directory, or run git-sync init")
+        print("       to generate a default one.")
+        logout()
+    }
+    
+    /// Read '.git-sync' file
+    let file = FileHandle(forReadingAtPath: filePath)!
+    let data = file.readDataToEndOfFile()
+    file.closeFile()
+    
+    /// Decode file contents into data structure
+    let decoder = JSONDecoder()
+    var structure: Root
+    do {
+        structure = try decoder.decode(Root.self, from: data)
+    } catch {
+        print("ERROR: Unable to interpret git-sync configuration file.")
+        logout()
+        return
+    }
+    
+    /// Compare '.git-sync' with list of repositories and add missing to root directory
+    let gitSyncRepos = structure.flatten()
+    let gitHubRepos = getRepositories().map { Repo(name: $0.name!, link: $0.cloneURL!, hidden: false) }
+    gitHubRepos.forEach{ repo in
+        if !gitSyncRepos.contains(repo) {
+            structure.repositories.append(repo)
+        }
+    }
+    
+    /// Generate updated '.git-sync'
+    let encoder = JSONEncoder()
+    let newData = try! encoder.encode(structure)
+    let string = String(data: newData, encoding: .utf8)!
+    
+    /// Write file to current directory (destructive)
+    do {
+        try string.write(toFile: filePath, atomically: false, encoding: .utf8)
+    } catch {
+        print("ERROR: Unable to write updated git-sync configuration file.")
+        logout()
+    }
+    
+    print("SUCCESS: Your git-sync configuration file has been updated.")
+    
     logout()
 }
 

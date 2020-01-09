@@ -13,7 +13,7 @@ let directoryBlacklist: [String] = [".DS_Store", ".git-sync"]
 
 struct Root: Codable, Checkable {
     let subdirs: [Directory]
-    let repositories: [Repo]
+    var repositories: [Repo]
     
     func create() {
         /// Reset directory stack
@@ -101,7 +101,7 @@ struct Directory: Codable, Checkable {
     }
 }
 
-struct Repo: Codable {
+struct Repo: Codable, Equatable {
     let name: String
     let link: String
     let hidden: Bool
@@ -116,6 +116,10 @@ struct Repo: Codable {
                 print("ERROR: Unable to create directory \(self.name)")
             }
         }
+    }
+    
+    static func == (lhs: Repo, rhs: Repo) -> Bool {
+        return lhs.link == rhs.link
     }
 }
 
@@ -154,5 +158,11 @@ extension Checkable {
         }
         
         return false
+    }
+    
+    func flatten() -> [Repo] {
+        var repos: [Repo] = repositories
+        subdirs.forEach({ repos += $0.flatten() })
+        return repos
     }
 }

@@ -7,7 +7,7 @@ let package = Package(
     name: "git-sync",
     dependencies: [
         // Dependencies declare other packages that this package depends on.
-         .package(url: "https://github.com/AnachronisticTech/SwiftGit2.git", from: "0.7.0"),
+         .package(url: "https://github.com/AnachronisticTech/SwiftGit2.git", from: "0.8.0"),
          .package(url: "https://github.com/nerdishbynature/octokit.swift.git", from: "0.9.0")
     ],
     targets: [
