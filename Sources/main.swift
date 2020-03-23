@@ -7,101 +7,102 @@
 
 import Foundation
 import OctoKit
+import SwiftGit2
+import libgit2
+import KeychainAccess
 
-let token = ""
-let config = TokenConfiguration(token)
-let client = Octokit(config)
+var username = ""
+var password = ""
+
+var client: Octokit? = nil
 var me: User? = nil
 
 func main() {
-    login()
-    var validOption = false
-    repeat {
-        validOption = true
-        switch listOptions() {
-        case "1": listRepos()
-        case "2": listStarredRepos()
-        case "3": generateGitSync()
-        case "4": updateGitSync()
-        case "5": cloneFromGitSync()
-        case "0": logout()
-        default :
-            validOption = false
-            print("That is not a valid task")
+    git_libgit2_init()
+    let args = ["init", "update", "pull", "setup"]
+    if args.filter({ CommandLine.arguments.contains($0) }).count > 1 {
+        print("Error: Too many arguments passed.")
+        exit(1)
+    } else if CommandLine.arguments.count == 1 {
+        login()
+        cloneFromGitSync()
+    } else {
+        switch CommandLine.arguments[1] {
+        case "init":
+            login()
+            generateGitSync()
+        case "update":
+            login()
+            updateGitSync()
+        case "setup":
+            setup(with: CommandLine.arguments[2])
+        default:
+            login()
+            cloneFromGitSync()
         }
-    } while !validOption
+    }
 }
 
 func login() {
-    var authenticated: Bool? = nil
-    client.me { response in
-        switch response {
-        case .success(let user):
-            print("Welcome to git-sync, \(user.login!)")
-            me = user
-            authenticated = true
-        case .failure(let error):
-            print(error)
-            authenticated = false
-        }
-    }
-    repeat {
-        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
-    } while authenticated == nil
-    if !authenticated! {
+    let tokens = Keychain(service: "git-sync").allKeys()
+    if tokens.count == 0 {
+        print("ERROR: No access token was found. Please run git-sync setup <token>.")
+        // Maybe add link explaining how to get a token
         exit(1)
-    }
-}
-
-func listOptions() -> String {
-    print("\nPlease select a task:")
-    print("  1. List your repositories")
-    print("  2. List your starred repositories")
-    print("  3. Generate git-sync file")
-    print("  4. Update git-sync file")
-    print("  5. Clone from git-sync file")
-    print("  0. Exit")
-    return readLine()!
-}
-
-func listRepos() {
-    var reposListed: Bool? = nil
-    client.repositories { response in
-        switch response {
-        case .success(let repos):
-            print(repos.filter({ $0.owner.login == me!.login! }).map { $0.cloneURL! })
-            reposListed = true
-        case .failure(let error):
-            print(error)
-            reposListed = false
+    } else {
+        let token = try! Keychain(service: "git-sync").get(tokens[0])!
+        let config = TokenConfiguration(token)
+        client = Octokit(config)
+    
+        var authenticated: Bool? = nil
+        client!.me { response in
+            switch response {
+            case .success(let user):
+                print("Welcome to git-sync, \(user.login!)")
+                me = user
+                authenticated = true
+            case .failure(let error):
+                print(error)
+                authenticated = false
+            }
+        }
+        repeat {
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
+        } while authenticated == nil
+        if !authenticated! {
+            exit(1)
+        }
+        let gitTokens = Keychain(server: URL(string: "github.com")!, protocolType: .https).allKeys()
+        if gitTokens.count == 0 {
+            print("ERROR: No Git credentials were found. Would you like to enter them now? [y/N]", terminator: "")
+            switch readLine()! {
+            case "y": break
+            default : exit(1)
+            }
+            print("Username: ", terminator: "")
+            username = readLine()!
+            print("Password: ", terminator: "")
+            password = readLine()!
+            let chain = Keychain(server: URL(string: "github.com")!, protocolType: .https)
+            chain[username] = password
+            print("SUCCESS: Git credentials saved successfully.")
+        } else {
+            username = gitTokens[0]
+            password = try! Keychain(server: URL(string: "github.com")!, protocolType: .https).get(gitTokens[0])!
         }
     }
-    repeat {
-        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
-    } while reposListed == nil
 }
 
-func listStarredRepos() {
-    var reposListed: Bool? = nil
-    client.myStars { response in
-        switch response {
-        case .success(let repos):
-            print(repos.map { $0.name! })
-            reposListed = true
-        case .failure(let error):
-            print(error)
-            reposListed = false
-        }
-    }
-    repeat {
-        RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.1))
-    } while reposListed == nil
+func setup(with token: String) {
+    let chain = Keychain(service: "git-sync")
+    chain["token"] = token
+    print("SUCCESS: Token saved successfully.")
 }
 
 func getRepositories() -> [OctoKit.Repository] {
     var reposListed: Bool? = nil
     var repositories: [OctoKit.Repository] = []
-    client.repositories { response in
+    client!.repositories { response in
         switch response {
         case .success(let repos):
             repositories = repos
@@ -133,7 +134,7 @@ func generateGitSync() {
         print("         any previous settings. Would you like to continue? (y/N): ", terminator: "")
         switch readLine()! {
         case "y": break
-        default : logout()
+        default : exit(0)
         }
     }
     
@@ -150,11 +151,11 @@ func generateGitSync() {
         try string.write(toFile: filePath, atomically: false, encoding: .utf8)
     } catch {
         print("ERROR: Unable to create git-sync configuration file.")
-        logout()
+        exit(1)
     }
     
     print("SUCCESS: A default git-sync configuration file has been generated for you.")
-    logout()
+    exit(0)
 }
 
 func updateGitSync() {
@@ -168,7 +169,7 @@ func updateGitSync() {
         print("ERROR: No git-sync configuration file exists in this directory. Please")
         print("       make sure you are in the correct directory, or run git-sync init")
         print("       to generate a default one.")
-        logout()
+        exit(1)
     }
     
     /// Read '.git-sync' file
@@ -183,8 +184,7 @@ func updateGitSync() {
         structure = try decoder.decode(Root.self, from: data)
     } catch {
         print("ERROR: Unable to interpret git-sync configuration file.")
-        logout()
-        return
+        exit(1)
     }
     
     /// Compare '.git-sync' with list of repositories and add missing to root directory
@@ -206,12 +206,11 @@ func updateGitSync() {
         try string.write(toFile: filePath, atomically: false, encoding: .utf8)
     } catch {
         print("ERROR: Unable to write updated git-sync configuration file.")
-        logout()
+        exit(1)
     }
     
     print("SUCCESS: Your git-sync configuration file has been updated.")
-    
-    logout()
+    exit(0)
 }
 
 func cloneFromGitSync() {
@@ -226,7 +225,7 @@ func cloneFromGitSync() {
         print("ERROR: No git-sync configuration file exists in this directory. Please")
         print("       make sure you are in the correct directory, or run git-sync init")
         print("       to generate a default one.")
-        logout()
+        exit(1)
     }
     
     /// Read '.git-sync' file
@@ -241,20 +240,13 @@ func cloneFromGitSync() {
         structure = try decoder.decode(Root.self, from: data)
     } catch {
         print("ERROR: Unable to interpret git-sync configuration file.")
-        logout()
-        return
+        exit(1)
     }
     
     /// Create directory structure and clone non-hidden repositories
     structure.create()
     
-    logout()
-}
-
-func logout() {
     exit(0)
 }
 
-while true {
-    main()
-}
+main()

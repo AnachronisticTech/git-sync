@@ -6,10 +6,12 @@
 //
 
 import Foundation
+import SwiftGit2
 
 let currentDirectory: String = FileManager.default.currentDirectoryPath + "/Git"
 var directoryStack: [String] = ["/"]
 let directoryBlacklist: [String] = [".DS_Store", ".git-sync"]
+let creds = Credentials.plaintext(username: username, password: password)
 
 struct Root: Codable, Checkable {
     let subdirs: [Directory]
@@ -78,9 +80,7 @@ struct Directory: Codable, Checkable {
         }
         
         /// Ignore directory if it will be empty
-        if self.subdirs.count == 0 && self.repositories.filter({ !$0.hidden }).count == 0 {
-            return
-        }
+        if self.subdirs.count == 0 && self.repositories.filter({ !$0.hidden }).count == 0 { return }
         
         /// Create and enter directory
         do {
@@ -109,12 +109,9 @@ struct Repo: Codable, Equatable {
     func create() {
         /// If repository not marked as hidden, clone into current directory with name
         if !self.hidden {
-            print("git cloning \(self.name) in directory \(directoryStack.last!)")
-            do {
-                try FileManager.default.createDirectory(atPath: currentDirectory + directoryStack.last! + "/\(self.name)", withIntermediateDirectories: true, attributes: nil)
-            } catch {
-                print("ERROR: Unable to create directory \(self.name)")
-            }
+            print("Cloning \(self.name) into \(directoryStack.last!)\(self.name)")
+            try? FileManager.default.createDirectory(atPath: currentDirectory + directoryStack.last! + "/\(self.name)", withIntermediateDirectories: true, attributes: nil)
+            let _ = Repository.clone(from: URL(string: self.link)!, to: URL(string: currentDirectory + directoryStack.last! + "/\(self.name)")!, credentials: creds)
         }
     }
     

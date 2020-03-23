@@ -1,6 +1,13 @@
 
-# Created by https://www.gitignore.io/api/xcode,swiftpm,swiftpackagemanager
-# Edit at https://www.gitignore.io/?templates=xcode,swiftpm,swiftpackagemanager
+# Created by https://www.gitignore.io/api/xcode,swiftpm,carthage,swiftpackagemanager
+# Edit at https://www.gitignore.io/?templates=xcode,swiftpm,carthage,swiftpackagemanager
+
+### Carthage ###
+# Carthage
+#
+# Add this line if you want to avoid checking in source code from Carthage dependencies.
+Carthage/Checkouts
+Carthage/Build
 
 ### SwiftPackageManager ###
 Packages
@@ -47,7 +54,7 @@ build/
 ### Xcode Patch ###
 **/xcshareddata/WorkspaceSettings.xcsettings
 
-# End of https://www.gitignore.io/api/xcode,swiftpm,swiftpackagemanager
+# End of https://www.gitignore.io/api/xcode,swiftpm,carthage,swiftpackagemanager
 
 .DS_Store
 contents.xcworkspacedata
