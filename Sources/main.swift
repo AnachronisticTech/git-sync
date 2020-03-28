@@ -17,6 +17,13 @@ var password = ""
 var client: Octokit? = nil
 var me: User? = nil
 
+let currentDirectory: String = FileManager.default.currentDirectoryPath + "/Git"
+var directoryStack: [String] = ["/"]
+let directoryBlacklist: [String] = [".DS_Store", ".git-sync"]
+var creds = Credentials.plaintext(username: username, password: password)
+
+var remotes = [String:String]()
+
 func main() {
     git_libgit2_init()
     let args = ["init", "update", "pull", "setup"]
@@ -89,6 +96,7 @@ func login() {
         } else {
             username = gitTokens[0]
             password = try! Keychain(server: URL(string: "github.com")!, protocolType: .https).get(gitTokens[0])!
+            creds = Credentials.plaintext(username: username, password: password)
         }
     }
 }
@@ -124,9 +132,8 @@ func generateGitSync() {
     
     /// Check if '.git-sync' exists in current directory
     let filePath = FileManager.default.currentDirectoryPath + "/.git-sync"
-//    print(filePath)  // DEBUG
     let fileReachable = FileManager.default.fileExists(atPath: filePath)
-    
+
     /// If '.git-sync' file exists, ask to overwrite (destructive)
     if fileReachable {
         print("WARNING: A git-sync configuration file already exists in this directory.")
@@ -140,11 +147,26 @@ func generateGitSync() {
     
     /// Get all user repositories and create basic '.git-sync' file
     let repositories = getRepositories()
-    let repos: [Repo] = repositories.map { Repo(name: $0.name!, link: $0.cloneURL!, hidden: false) }
-    let rootDirectory = Root(subdirs: [], repositories: repos)
-    let encoder = JSONEncoder()
-    let data = try! encoder.encode(rootDirectory)
-    let string = String(data: data, encoding: .utf8)!
+    let repos: [GSRepository] = repositories.map { repo in
+        GSRepository(
+            name: repo.name!,
+            domain: repo.owner.login!,
+            visible: true
+        )
+    }
+    let owner = me!.login!
+    let domain: String
+    if repositories.count > 0 {
+        domain = repositories[0].cloneURL!.replacingOccurrences(of: "/\(repos[0].name).git", with: "")
+    } else {
+        domain = ""
+    }
+    let rootDirectory = GSFile(
+        remotes: [GSRemote(url: domain, identifier: owner)],
+        subdirectories: [],
+        repositories: repos
+    )
+    let string = rootDirectory.write()
     
     /// Write file to current directory (destructive)
     do {
@@ -178,18 +200,32 @@ func updateGitSync() {
     file.closeFile()
     
     /// Decode file contents into data structure
-    let decoder = JSONDecoder()
-    var structure: Root
+    let tokens = GSLexer(code: String(data: data, encoding: .utf8)!).tokens
+    let parser = GSParser(tokens: tokens)
+    var structure: GSFile
     do {
-        structure = try decoder.decode(Root.self, from: data)
+        structure = try parser.parse()
     } catch {
         print("ERROR: Unable to interpret git-sync configuration file.")
         exit(1)
     }
     
-    /// Compare '.git-sync' with list of repositories and add missing to root directory
+    /// Populate list of remotes
+    structure.remotes.forEach {
+        remotes[$0.identifier] = $0.url
+    }
+    
+    /// Get all user repositories
     let gitSyncRepos = structure.flatten()
-    let gitHubRepos = getRepositories().map { Repo(name: $0.name!, link: $0.cloneURL!, hidden: false) }
+    let gitHubRepos = getRepositories().map { repo in
+        GSRepository(
+            name: repo.name!,
+            domain: remotes.firstKey(for: repo.cloneURL!.replacingOccurrences(of: "/\(repo.name!).git", with: "")) ?? repo.owner.login!,
+            visible: true
+        )
+    }
+    
+    /// Compare '.git-sync' with list of repositories and add missing to root directory
     gitHubRepos.forEach{ repo in
         if !gitSyncRepos.contains(repo) {
             structure.repositories.append(repo)
@@ -197,9 +233,7 @@ func updateGitSync() {
     }
     
     /// Generate updated '.git-sync'
-    let encoder = JSONEncoder()
-    let newData = try! encoder.encode(structure)
-    let string = String(data: newData, encoding: .utf8)!
+    let string = structure.write()
     
     /// Write file to current directory (destructive)
     do {
@@ -217,7 +251,6 @@ func cloneFromGitSync() {
         
     /// Check if '.git-sync' exists in current directory
     let filePath = FileManager.default.currentDirectoryPath + "/.git-sync"
-//    print(filePath)  // DEBUG
     let fileReachable = FileManager.default.fileExists(atPath: filePath)
     
     /// If '.git-sync' doesn't exist, ask to try again later
@@ -234,13 +267,19 @@ func cloneFromGitSync() {
     file.closeFile()
     
     /// Decode file contents into data structure
-    let decoder = JSONDecoder()
-    let structure: Root
+    let tokens = GSLexer(code: String(data: data, encoding: .utf8)!).tokens
+    let parser = GSParser(tokens: tokens)
+    let structure: GSFile
     do {
-        structure = try decoder.decode(Root.self, from: data)
+        structure = try parser.parse()
     } catch {
         print("ERROR: Unable to interpret git-sync configuration file.")
         exit(1)
+    }
+    
+    /// Populate list of remotes
+    structure.remotes.forEach {
+        remotes[$0.identifier] = $0.url
     }
     
     /// Create directory structure and clone non-hidden repositories
